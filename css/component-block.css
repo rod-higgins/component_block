@@ -1,0 +1,374 @@
+/* Component Block Admin Styles */
+
+.component-block-overview-actions {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.component-block-overview-actions .button {
+  margin: 0;
+}
+
+.component-block-filter {
+  padding: 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  width: 250px;
+  margin-bottom: 1rem;
+}
+
+.component-block-overview {
+  border-collapse: collapse;
+  width: 100%;
+  background: white;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.component-block-overview th {
+  background: #f1f3f4;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 2px solid #e0e0e0;
+  color: #333;
+}
+
+.component-block-overview td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: top;
+}
+
+.component-block-admin-item {
+  transition: background-color 0.2s ease;
+}
+
+.component-block-admin-item:hover,
+.component-block-item-hover {
+  background-color: #f8f9fa;
+}
+
+.component-block-admin-item:nth-child(even) {
+  background-color: #fafbfc;
+}
+
+.component-block-admin-item:nth-child(even):hover {
+  background-color: #f1f3f4;
+}
+
+/* Summary styles */
+.component-block-summary {
+  margin-top: 2rem;
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.component-block-summary-content {
+  padding: 1.5rem;
+}
+
+.component-block-summary h3 {
+  margin-top: 0;
+  color: #333;
+  border-bottom: 2px solid #1a73e8;
+  padding-bottom: 0.5rem;
+}
+
+.component-block-summary ul {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0 0;
+}
+
+.component-block-summary li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f0f0f0;
+  color: #666;
+}
+
+.component-block-summary li:last-child {
+  border-bottom: none;
+}
+
+/* Statistics page styles */
+.component-block-stats-overview {
+  margin-bottom: 2rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-box {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-box:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.stat-box h3 {
+  font-size: 2.5rem;
+  margin: 0 0 0.5rem 0;
+  color: #1a73e8;
+  font-weight: 700;
+}
+
+.stat-box p {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Preview styles */
+.component-block-preview-info {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #1a73e8;
+}
+
+.component-block-preview-info h2 {
+  margin-top: 0;
+  color: #333;
+}
+
+.component-block-preview-container {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.component-block-preview-container h3 {
+  margin-top: 0;
+  color: #333;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 0.5rem;
+}
+
+.component-block-preview-loading {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+  font-style: italic;
+}
+
+.component-block-preview-error {
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  color: #c53030;
+  padding: 1rem;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.component-block-preview-actions {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Field enhancements */
+.component-block-field-wrapper {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: white;
+  padding: 1rem;
+}
+
+.component-block-info {
+  background: #e8f0fe;
+  border: 1px solid #1a73e8;
+  border-radius: 4px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+.component-block-info strong {
+  color: #1a73e8;
+}
+
+.component-block-list {
+  margin-top: 0.5rem;
+  color: #666;
+  font-family: monospace;
+  font-size: 0.8rem;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.component-block-refresh-btn {
+  background: #1a73e8 !important;
+  color: white !important;
+  border: none !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 4px !important;
+  font-size: 0.85rem !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.component-block-refresh-btn:hover {
+  background: #1557b0 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.3);
+}
+
+.component-block-refresh-btn:disabled {
+  opacity: 0.6 !important;
+  transform: none !important;
+  cursor: not-allowed !important;
+}
+
+/* Outdated blocks warning */
+.component-block-outdated {
+  background: #fff8e1;
+  border: 1px solid #ffa726;
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.component-block-outdated h3 {
+  color: #e65100;
+  margin-top: 0;
+}
+
+/* Block content specific styles */
+.component-block {
+  position: relative;
+  overflow: hidden;
+}
+
+.component-block-content {
+  width: 100%;
+}
+
+.component-block[data-component-type] {
+  /* Add component-specific styling based on data attribute */
+}
+
+/* Chart container */
+#component-usage-chart {
+  max-width: 400px;
+  margin: 1rem auto;
+}
+
+/* Export button */
+.component-block-export-stats {
+  margin-top: 1rem;
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.component-block-export-stats:hover {
+  background: #218838;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .component-block-overview-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .component-block-filter {
+    width: 100%;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .component-block-preview-actions {
+    flex-direction: column;
+  }
+
+  .component-block-overview {
+    font-size: 0.85rem;
+  }
+
+  .component-block-overview th,
+  .component-block-overview td {
+    padding: 0.5rem;
+  }
+}
+
+/* Print styles */
+@media print {
+  .component-block-overview-actions,
+  .component-block-preview-actions,
+  .component-block-export-stats {
+    display: none;
+  }
+
+  .component-block-overview {
+    box-shadow: none;
+    border: 1px solid #000;
+  }
+
+  .stat-box {
+    box-shadow: none;
+    border: 1px solid #000;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .component-block-overview,
+  .stat-box,
+  .component-block-field-wrapper {
+    border-width: 2px;
+  }
+
+  .component-block-info {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .component-block-admin-item,
+  .stat-box,
+  .component-block-refresh-btn {
+    transition: none !important;
+  }
+
+  .stat-box:hover {
+    transform: none;
+  }
+}

@@ -1,0 +1,52 @@
+{#
+/**
+ * @file
+ * Template for Component Block preview in admin.
+ *
+ * Available variables:
+ * - component_type: The selected component type
+ * - config: Component configuration array
+ * - component_info: Component metadata
+ */
+#}
+
+<div class="component-block-preview" data-component-type="{{ component_type }}">
+  
+  <div class="component-block-preview-header">
+    <h6 class="component-block-preview-title">
+      🎨 Block Preview
+      {% if component_info.label %}
+        <span class="component-block-preview-component-name">{{ component_info.label }}</span>
+      {% endif %}
+    </h6>
+    
+    {% if config %}
+      <button type="button" class="component-block-preview-toggle" title="Toggle configuration view">
+        ⚙️ Config
+      </button>
+    {% endif %}
+  </div>
+  
+  <div class="component-block-preview-content">
+    {% if component_type %}
+      {# Preview content will be populated by JavaScript or AJAX #}
+      <div class="component-block-preview-placeholder">
+        <span class="component-block-preview-icon">⟳</span>
+        <p>Loading block preview...</p>
+      </div>
+    {% else %}
+      <div class="component-block-preview-empty">
+        <span class="component-block-preview-icon">🎨</span>
+        <p>Select a component to see block preview</p>
+      </div>
+    {% endif %}
+  </div>
+  
+  {% if config %}
+    <div class="component-block-preview-config" style="display: none;">
+      <h6>Block Configuration:</h6>
+      <pre><code>{{ config|json_encode(constant('JSON_PRETTY_PRINT')) }}</code></pre>
+    </div>
+  {% endif %}
+  
+</div>

@@ -1,0 +1,6 @@
+component_block.admin:
+  title: 'Component Blocks'
+  route_name: component_block.admin.overview
+  description: 'Manage Component Block custom blocks and view statistics'
+  parent: system.admin_structure
+  weight: 55

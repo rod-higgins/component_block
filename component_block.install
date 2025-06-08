@@ -1,0 +1,316 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for Component Block module.
+ */
+
+use Drupal\block_content\Entity\BlockContentType;
+use Drupal\field\Entity\FieldStorageConfig;
+use Drupal\field\Entity\FieldConfig;
+use Drupal\Core\Entity\Entity\EntityFormDisplay;
+use Drupal\Core\Entity\Entity\EntityViewDisplay;
+
+/**
+ * Implements hook_install().
+ */
+function component_block_install() {
+  // Create Component Block content type
+  $block_content_type = BlockContentType::create([
+    'id' => 'component_block',
+    'label' => 'Component Block',
+    'description' => 'A block that renders a Single Directory Component (SDC) with configurable properties.',
+  ]);
+  $block_content_type->save();
+
+  // Create field storage for component configuration
+  $field_storage = FieldStorageConfig::create([
+    'field_name' => 'field_component_config',
+    'entity_type' => 'block_content',
+    'type' => 'component_field',
+    'cardinality' => 1, // Single component per block
+    'settings' => [
+      'max_length' => 0,
+    ],
+    'locked' => FALSE,
+  ]);
+  $field_storage->save();
+
+  // Create field instance
+  $field_instance = FieldConfig::create([
+    'field_storage' => $field_storage,
+    'bundle' => 'component_block',
+    'label' => 'Component Configuration',
+    'description' => 'Select and configure a component for this block. The component will be rendered when the block is displayed.',
+    'required' => TRUE,
+    'settings' => [
+      'handler' => 'default',
+      'handler_settings' => [],
+    ],
+    'default_value' => [],
+  ]);
+  $field_instance->save();
+
+  // Configure form display
+  $form_display = EntityFormDisplay::create([
+    'targetEntityType' => 'block_content',
+    'bundle' => 'component_block',
+    'mode' => 'default',
+  ]);
+  
+  $form_display->setComponent('info', [
+    'type' => 'string_textfield',
+    'weight' => -5,
+    'region' => 'content',
+    'settings' => [
+      'size' => 60,
+      'placeholder' => '',
+    ],
+    'third_party_settings' => [],
+  ]);
+  
+  $form_display->setComponent('field_component_config', [
+    'type' => 'component_field_widget',
+    'weight' => 10,
+    'settings' => [
+      'show_preview' => TRUE,
+      'collapsed_by_default' => FALSE,
+      'show_component_info' => TRUE,
+    ],
+    'third_party_settings' => [],
+    'region' => 'content',
+  ]);
+  $form_display->save();
+
+  // Configure view display
+  $view_display = EntityViewDisplay::create([
+    'targetEntityType' => 'block_content',
+    'bundle' => 'component_block',
+    'mode' => 'default',
+  ]);
+  
+  $view_display->setComponent('field_component_config', [
+    'type' => 'component_field_formatter',
+    'weight' => 10,
+    'label' => 'hidden',
+    'settings' => [
+      'add_wrapper' => FALSE,
+      'add_item_wrapper' => FALSE,
+      'show_animation' => FALSE,
+      'enable_fallback' => TRUE,
+    ],
+    'third_party_settings' => [],
+    'region' => 'content',
+  ]);
+  $view_display->save();
+
+  // Initialize component discovery to ensure cache is populated
+  try {
+    $discovery = \Drupal::service('component_field.discovery');
+    $components = $discovery->discoverComponents(TRUE);
+    
+    \Drupal::messenger()->addStatus(t(
+      'Component Block module installed successfully! Found @count components available for blocks.',
+      ['@count' => count($components)]
+    ));
+    
+    if (count($components) === 0) {
+      \Drupal::messenger()->addWarning(t(
+        'No components were discovered. Add SDC components to your theme\'s <code>components/</code> directory and refresh the discovery cache.'
+      ));
+    }
+  } catch (\Exception $e) {
+    \Drupal::logger('component_block')->error('Error during component discovery: @error', ['@error' => $e->getMessage()]);
+    \Drupal::messenger()->addWarning(t('Component discovery encountered an error. Check the logs for details.'));
+  }
+
+  \Drupal::messenger()->addStatus(t(
+    'Visit <a href="/admin/structure/block/block-content">Custom block library</a> to create your first Component Block.'
+  ));
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function component_block_uninstall() {
+  // Remove field instance
+  $field_config = FieldConfig::loadByName('block_content', 'component_block', 'field_component_config');
+  if ($field_config) {
+    $field_config->delete();
+  }
+
+  // Remove field storage if no other bundles use it
+  $field_storage = FieldStorageConfig::loadByName('block_content', 'field_component_config');
+  if ($field_storage) {
+    $field_configs = \Drupal::entityTypeManager()
+      ->getStorage('field_config')
+      ->loadByProperties(['field_name' => 'field_component_config']);
+      
+    if (empty($field_configs)) {
+      $field_storage->delete();
+    }
+  }
+
+  // Remove form and view displays
+  $form_display = EntityFormDisplay::load('block_content.component_block.default');
+  if ($form_display) {
+    $form_display->delete();
+  }
+
+  $view_display = EntityViewDisplay::load('block_content.component_block.default');
+  if ($view_display) {
+    $view_display->delete();
+  }
+
+  // Note: We don't delete the block content type itself as it may have content
+  // The admin can manually delete it through the UI if needed
+
+  \Drupal::messenger()->addStatus(t(
+    'Component Block module uninstalled. The Component Block content type remains for existing content.'
+  ));
+}
+
+/**
+ * Implements hook_requirements().
+ */
+function component_block_requirements($phase) {
+  $requirements = [];
+
+  if ($phase === 'runtime') {
+    // Check if component_field module is available
+    if (!\Drupal::moduleHandler()->moduleExists('component_field')) {
+      $requirements['component_block_dependency'] = [
+        'title' => t('Component Block'),
+        'value' => t('Missing dependency'),
+        'severity' => REQUIREMENT_ERROR,
+        'description' => t('Component Block module requires the Component Field module to be enabled.'),
+      ];
+      return $requirements;
+    }
+
+    // Check component discovery
+    try {
+      $discovery = \Drupal::service('component_field.discovery');
+      $components = $discovery->discoverComponents();
+      $component_count = count($components);
+
+      $requirements['component_block_discovery'] = [
+        'title' => t('Component Block'),
+        'value' => t('@count components available for blocks', ['@count' => $component_count]),
+        'severity' => $component_count > 0 ? REQUIREMENT_OK : REQUIREMENT_WARNING,
+      ];
+
+      if ($component_count === 0) {
+        $requirements['component_block_discovery']['description'] = t(
+          'No components were discovered for blocks. Ensure your theme has SDC components in the <code>components/</code> directory.'
+        );
+      }
+    } catch (\Exception $e) {
+      $requirements['component_block_discovery'] = [
+        'title' => t('Component Block'),
+        'value' => t('Component discovery error'),
+        'severity' => REQUIREMENT_ERROR,
+        'description' => t('Error discovering components: @error', ['@error' => $e->getMessage()]),
+      ];
+    }
+
+    // Check if Component Block content type exists
+    $block_content_type = \Drupal::entityTypeManager()
+      ->getStorage('block_content_type')
+      ->load('component_block');
+      
+    if (!$block_content_type) {
+      $requirements['component_block_content_type'] = [
+        'title' => t('Component Block Content Type'),
+        'value' => t('Missing'),
+        'severity' => REQUIREMENT_ERROR,
+        'description' => t('The Component Block content type is missing. Reinstall the module to recreate it.'),
+      ];
+    } else {
+      $requirements['component_block_content_type'] = [
+        'title' => t('Component Block Content Type'),
+        'value' => t('Available'),
+        'severity' => REQUIREMENT_OK,
+        'description' => t('Component Block content type is properly configured.'),
+      ];
+    }
+
+    // Count existing component blocks
+    try {
+      $block_count = \Drupal::entityTypeManager()
+        ->getStorage('block_content')
+        ->getQuery()
+        ->condition('type', 'component_block')
+        ->accessCheck(FALSE)
+        ->count()
+        ->execute();
+        
+      $requirements['component_block_usage'] = [
+        'title' => t('Component Block Usage'),
+        'value' => t('@count component blocks created', ['@count' => $block_count]),
+        'severity' => REQUIREMENT_INFO,
+      ];
+    } catch (\Exception $e) {
+      // Non-critical error, just log it
+      \Drupal::logger('component_block')->warning('Error counting component blocks: @error', ['@error' => $e->getMessage()]);
+    }
+  }
+
+  return $requirements;
+}
+
+/**
+ * Update 8001: Ensure Component Block content type has proper field configuration.
+ */
+function component_block_update_8001() {
+  try {
+    // Check if field storage exists
+    $field_storage = FieldStorageConfig::loadByName('block_content', 'field_component_config');
+    if (!$field_storage) {
+      // Create field storage
+      $field_storage = FieldStorageConfig::create([
+        'field_name' => 'field_component_config',
+        'entity_type' => 'block_content',
+        'type' => 'component_field',
+        'cardinality' => 1,
+        'settings' => ['max_length' => 0],
+        'locked' => FALSE,
+      ]);
+      $field_storage->save();
+    }
+
+    // Check if field instance exists
+    $field_instance = FieldConfig::loadByName('block_content', 'component_block', 'field_component_config');
+    if (!$field_instance) {
+      $field_instance = FieldConfig::create([
+        'field_storage' => $field_storage,
+        'bundle' => 'component_block',
+        'label' => 'Component Configuration',
+        'description' => 'Select and configure a component for this block.',
+        'required' => TRUE,
+      ]);
+      $field_instance->save();
+    }
+
+    // Update form display settings
+    $form_display = EntityFormDisplay::load('block_content.component_block.default');
+    if ($form_display) {
+      $form_display->setComponent('field_component_config', [
+        'type' => 'component_field_widget',
+        'weight' => 10,
+        'settings' => [
+          'show_preview' => TRUE,
+          'collapsed_by_default' => FALSE,
+          'show_component_info' => TRUE,
+        ],
+      ]);
+      $form_display->save();
+    }
+
+    return t('Updated Component Block field configuration.');
+    
+  } catch (\Exception $e) {
+    \Drupal::logger('component_block')->error('Error in update 8001: @error', ['@error' => $e->getMessage()]);
+    throw new \Exception('Failed to update Component Block configuration: ' . $e->getMessage());
+  }
+}

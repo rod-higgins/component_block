@@ -1,0 +1,428 @@
+<?php
+
+/**
+ * @file
+ * Main module file for Component Block with enhanced block content type support.
+ */
+
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Render\Element;
+use Drupal\Core\Ajax\AjaxResponse;
+use Drupal\Core\Ajax\ReplaceCommand;
+use Drupal\Core\Ajax\InvokeCommand;
+
+/**
+ * Implements hook_theme().
+ */
+function component_block_theme($existing, $type, $theme, $path) {
+  return [
+    'component_block_content' => [
+      'variables' => [
+        'component_type' => NULL,
+        'component_name' => NULL,
+        'configuration' => [],
+        'attributes' => [],
+        'block_content' => NULL,
+      ],
+      'template' => 'component-block-content',
+    ],
+    'component_block_preview' => [
+      'variables' => [
+        'component_type' => NULL,
+        'config' => [],
+        'component_info' => [],
+      ],
+      'template' => 'component-block-preview',
+    ],
+  ];
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function component_block_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  // Enhance Component Block content type forms
+  if ($form_id === 'block_content_component_block_form' || 
+      $form_id === 'block_content_component_block_edit_form') {
+    
+    // Add our JavaScript and CSS
+    $form['#attached']['library'][] = 'component_block/admin';
+    
+    // Add component field specific enhancements
+    if (isset($form['field_component_config'])) {
+      component_block_enhance_component_field($form['field_component_config']);
+    }
+  }
+  
+  // Enhance block configuration forms for our component blocks
+  if (strpos($form_id, 'block_form') !== FALSE && 
+      isset($form['settings']['block_content'])) {
+    
+    $block_content = $form_state->getFormObject()->getEntity();
+    if ($block_content && method_exists($block_content, 'getPlugin')) {
+      $plugin = $block_content->getPlugin();
+      if ($plugin && $plugin->getPluginId() === 'block_content') {
+        $block_content_entity = $plugin->getEntity();
+        if ($block_content_entity && $block_content_entity->bundle() === 'component_block') {
+          $form['#attached']['library'][] = 'component_block/admin';
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Enhance component field within block content forms.
+ */
+function component_block_enhance_component_field(&$field_element) {
+  try {
+    // Add block-specific wrapper classes
+    if (!isset($field_element['#attributes']['class'])) {
+      $field_element['#attributes']['class'] = [];
+    }
+    $field_element['#attributes']['class'][] = 'component-block-field';
+    
+    // Add refresh functionality
+    $field_element['refresh_components'] = [
+      '#type' => 'button',
+      '#value' => t('🔄 Refresh Components'),
+      '#ajax' => [
+        'callback' => 'component_block_refresh_callback',
+        'wrapper' => 'component-block-field-wrapper',
+        'effect' => 'fade',
+        'progress' => [
+          'type' => 'throbber',
+          'message' => t('Refreshing components...'),
+        ],
+      ],
+      '#attributes' => [
+        'class' => ['button', 'button--small', 'component-block-refresh-btn'],
+        'title' => t('Refresh component discovery and reload available components'),
+      ],
+      '#weight' => -10,
+      '#limit_validation_errors' => [],
+    ];
+    
+    // Add wrapper for AJAX updates
+    $field_element['#prefix'] = '<div id="component-block-field-wrapper" class="component-block-field-wrapper">';
+    $field_element['#suffix'] = '</div>';
+    
+    // Add component info
+    try {
+      $discovery = \Drupal::service('component_field.discovery');
+      $components = $discovery->discoverComponents();
+      $component_count = count($components);
+      
+      $field_element['component_info'] = [
+        '#type' => 'markup',
+        '#markup' => '<div class="component-block-info">' .
+          '<small><strong>' . t('@count components available for blocks', ['@count' => $component_count]) . '</strong></small>' .
+          '<div class="component-block-list">' . 
+          implode(', ', array_keys($components)) . 
+          '</div>' .
+          '</div>',
+        '#weight' => -5,
+      ];
+      
+    } catch (\Exception $e) {
+      \Drupal::logger('component_block')->error('Error loading component info: @error', ['@error' => $e->getMessage()]);
+    }
+    
+  } catch (\Exception $e) {
+    \Drupal::logger('component_block')->error('Error enhancing component field: @error', ['@error' => $e->getMessage()]);
+  }
+}
+
+/**
+ * AJAX callback for refreshing components in block forms.
+ */
+function component_block_refresh_callback(array &$form, FormStateInterface $form_state) {
+  try {
+    // Clear and refresh discovery cache
+    $discovery = \Drupal::service('component_field.discovery');
+    $discovery->clearCache();
+    $components = $discovery->discoverComponents(TRUE);
+    
+    // Find the field element to return
+    $field_element = $form['field_component_config'] ?? $form;
+    
+    $response = new AjaxResponse();
+    $response->addCommand(new ReplaceCommand('#component-block-field-wrapper', $field_element));
+    
+    // Show success message
+    \Drupal::messenger()->addStatus(t('✅ Component discovery refreshed for blocks. Found @count components.', [
+      '@count' => count($components),
+    ]));
+    
+    return $response;
+    
+  } catch (\Exception $e) {
+    \Drupal::logger('component_block')->error('Error in refresh callback: @error', ['@error' => $e->getMessage()]);
+    
+    $response = new AjaxResponse();
+    $response->addCommand(new InvokeCommand('body', 'append', ['<div class="messages messages--error">Error refreshing components.</div>']));
+    return $response;
+  }
+}
+
+/**
+ * Implements hook_block_content_type_insert().
+ */
+function component_block_block_content_type_insert($block_content_type) {
+  // Automatically add component field to new Component Block types
+  if ($block_content_type->id() === 'component_block') {
+    component_block_add_component_field($block_content_type);
+  }
+}
+
+/**
+ * Add component field to Component Block content type.
+ */
+function component_block_add_component_field($block_content_type) {
+  try {
+    $field_storage = \Drupal::entityTypeManager()
+      ->getStorage('field_storage_config')
+      ->load('block_content.field_component_config');
+    
+    if (!$field_storage) {
+      // Create field storage
+      $field_storage = \Drupal::entityTypeManager()
+        ->getStorage('field_storage_config')
+        ->create([
+          'field_name' => 'field_component_config',
+          'entity_type' => 'block_content',
+          'type' => 'component_field',
+          'cardinality' => 1, // Single component per block
+          'settings' => ['max_length' => 0],
+          'locked' => FALSE,
+        ]);
+      $field_storage->save();
+    }
+    
+    // Create field instance
+    $field_instance = \Drupal::entityTypeManager()
+      ->getStorage('field_config')
+      ->create([
+        'field_storage' => $field_storage,
+        'bundle' => 'component_block',
+        'label' => 'Component Configuration',
+        'description' => 'Select and configure a component for this block.',
+        'required' => TRUE,
+        'settings' => [
+          'handler' => 'default',
+          'handler_settings' => [],
+        ],
+        'default_value' => [],
+      ]);
+    $field_instance->save();
+    
+    // Configure form display
+    $form_display = \Drupal::entityTypeManager()
+      ->getStorage('entity_form_display')
+      ->create([
+        'targetEntityType' => 'block_content',
+        'bundle' => 'component_block',
+        'mode' => 'default',
+      ]);
+    
+    $form_display->setComponent('field_component_config', [
+      'type' => 'component_field_widget',
+      'weight' => 10,
+      'settings' => [
+        'show_preview' => TRUE,
+        'collapsed_by_default' => FALSE,
+        'show_component_info' => TRUE,
+      ],
+      'third_party_settings' => [],
+      'region' => 'content',
+    ]);
+    $form_display->save();
+    
+    // Configure view display
+    $view_display = \Drupal::entityTypeManager()
+      ->getStorage('entity_view_display')
+      ->create([
+        'targetEntityType' => 'block_content',
+        'bundle' => 'component_block',
+        'mode' => 'default',
+      ]);
+    
+    $view_display->setComponent('field_component_config', [
+      'type' => 'component_field_formatter',
+      'weight' => 10,
+      'label' => 'hidden',
+      'settings' => [
+        'add_wrapper' => FALSE,
+        'add_item_wrapper' => TRUE,
+        'show_animation' => FALSE,
+        'enable_fallback' => TRUE,
+      ],
+      'third_party_settings' => [],
+      'region' => 'content',
+    ]);
+    $view_display->save();
+    
+    \Drupal::logger('component_block')->info('Successfully configured Component Block content type with component field');
+    
+  } catch (\Exception $e) {
+    \Drupal::logger('component_block')->error('Error adding component field to block content type: @error', ['@error' => $e->getMessage()]);
+  }
+}
+
+/**
+ * Implements hook_preprocess_block().
+ */
+function component_block_preprocess_block(&$variables) {
+  try {
+    if (isset($variables['elements']['#block']) && is_object($variables['elements']['#block'])) {
+      $block = $variables['elements']['#block'];
+      
+      if (method_exists($block, 'getPlugin') && $block->getPlugin()->getPluginId() === 'block_content') {
+        $block_content = $block->getPlugin()->getEntity();
+        
+        if ($block_content && method_exists($block_content, 'bundle') && $block_content->bundle() === 'component_block') {
+          // Add block-specific classes and attributes
+          if (!isset($variables['attributes']['class'])) {
+            $variables['attributes']['class'] = [];
+          }
+          $variables['attributes']['class'][] = 'component-block';
+          $variables['attributes']['data-component-block'] = TRUE;
+          
+          // Add block-specific library
+          if (!isset($variables['#attached'])) {
+            $variables['#attached'] = [];
+          }
+          if (!isset($variables['#attached']['library'])) {
+            $variables['#attached']['library'] = [];
+          }
+          $variables['#attached']['library'][] = 'component_block/display';
+        }
+      }
+    }
+  } catch (\Exception $e) {
+    \Drupal::logger('component_block')->error('Error in preprocess_block: @error', ['@error' => $e->getMessage()]);
+  }
+}
+
+/**
+ * Implements hook_preprocess_block_content().
+ */
+function component_block_preprocess_block_content(&$variables) {
+  try {
+    if (isset($variables['block_content']) && is_object($variables['block_content'])) {
+      $block_content = $variables['block_content'];
+      
+      if (method_exists($block_content, 'bundle') && $block_content->bundle() === 'component_block') {
+        // Add component block specific preprocessing
+        $variables['attributes']['class'][] = 'component-block-content';
+        
+        // Extract component configuration for template use
+        if (method_exists($block_content, 'get') && $block_content->hasField('field_component_config')) {
+          $component_field = $block_content->get('field_component_config');
+          
+          if (!$component_field->isEmpty()) {
+            $component_item = $component_field->first();
+            if ($component_item && method_exists($component_item, 'get')) {
+              $variables['component_type'] = $component_item->get('component_type')->getValue();
+              $variables['component_configuration'] = $component_item->getConfiguration();
+              
+              // Add component-specific classes
+              if ($variables['component_type']) {
+                $variables['attributes']['class'][] = 'component-block-' . str_replace(['_', '-'], '-', $variables['component_type']);
+                $variables['attributes']['data-component-type'] = $variables['component_type'];
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (\Exception $e) {
+    \Drupal::logger('component_block')->error('Error in preprocess_block_content: @error', ['@error' => $e->getMessage()]);
+  }
+}
+
+/**
+ * Implements hook_entity_operation().
+ */
+function component_block_entity_operation($entity) {
+  $operations = [];
+  
+  try {
+    if ($entity->getEntityTypeId() === 'block_content' && 
+        method_exists($entity, 'bundle') && 
+        $entity->bundle() === 'component_block') {
+      
+      $operations['component_preview'] = [
+        'title' => t('Preview Component'),
+        'url' => \Drupal\Core\Url::fromRoute('component_block.preview', [
+          'block_content' => $entity->id(),
+        ]),
+        'weight' => 15,
+      ];
+    }
+  } catch (\Exception $e) {
+    \Drupal::logger('component_block')->error('Error adding entity operations: @error', ['@error' => $e->getMessage()]);
+  }
+  
+  return $operations;
+}
+
+/**
+ * Implements hook_help().
+ */
+function component_block_help($route_name, $route_match) {
+  switch ($route_name) {
+    case 'help.page.component_block':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('The Component Block module allows you to create custom blocks using auto-discovered Single Directory Components (SDC) from your theme. This provides a seamless way to use your theme components as reusable blocks throughout your site.') . '</p>';
+      
+      $output .= '<h3>' . t('Creating Component Blocks') . '</h3>';
+      $output .= '<dl>';
+      $output .= '<dt>' . t('Add a Component Block') . '</dt>';
+      $output .= '<dd>' . t('Go to Block layout > Custom block library > Add custom block > Component Block to create a new component-based block.') . '</dd>';
+      $output .= '<dt>' . t('Configure Components') . '</dt>';
+      $output .= '<dd>' . t('Select from auto-discovered components in your theme and configure their properties using the dynamic form that adapts to each component.') . '</dd>';
+      $output .= '<dt>' . t('Place Blocks') . '</dt>';
+      $output .= '<dd>' . t('Use the standard Drupal block placement interface to add your component blocks to any region on your site.') . '</dd>';
+      $output .= '</dl>';
+      
+      $output .= '<h3>' . t('Features') . '</h3>';
+      $output .= '<ul>';
+      $output .= '<li>' . t('<strong>Auto-Discovery:</strong> Automatically finds SDC components in your theme') . '</li>';
+      $output .= '<li>' . t('<strong>Dynamic Configuration:</strong> Generates forms based on component schemas') . '</li>';
+      $output .= '<li>' . t('<strong>Live Preview:</strong> See component preview while editing') . '</li>';
+      $output .= '<li>' . t('<strong>Rich Text Support:</strong> Full CKEditor5 integration for text properties') . '</li>';
+      $output .= '<li>' . t('<strong>Entity References:</strong> Support for media, nodes, and taxonomy terms') . '</li>';
+      $output .= '</ul>';
+      
+      return $output;
+  }
+}
+
+/**
+ * Get available component types for blocks.
+ */
+function component_block_get_available_components() {
+  try {
+    $discovery = \Drupal::service('component_field.discovery');
+    return $discovery->discoverComponents();
+  } catch (\Exception $e) {
+    \Drupal::logger('component_block')->error('Error getting available components: @error', ['@error' => $e->getMessage()]);
+    return [];
+  }
+}
+
+/**
+ * Check if a component is suitable for blocks.
+ */
+function component_block_is_component_suitable($component_name, $component_info) {
+  try {
+    // All components discovered by component_field are suitable for blocks
+    // You could add specific filtering logic here if needed
+    return TRUE;
+  } catch (\Exception $e) {
+    \Drupal::logger('component_block')->error('Error checking component suitability: @error', ['@error' => $e->getMessage()]);
+    return FALSE;
+  }
+}

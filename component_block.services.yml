@@ -1,0 +1,7 @@
+services:
+  component_block.manager:
+    class: Drupal\component_block\Service\ComponentBlockManager
+    arguments:
+      - '@entity_type.manager'
+      - '@component_field.discovery'
+      - '@logger.factory'

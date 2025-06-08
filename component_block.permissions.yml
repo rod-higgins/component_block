@@ -1,0 +1,19 @@
+create component_block content:
+  title: 'Create Component Block content'
+  description: 'Create new Component Block custom blocks'
+
+edit own component_block content:
+  title: 'Edit own Component Block content'
+  description: 'Edit Component Block custom blocks created by the user'
+
+edit any component_block content:
+  title: 'Edit any Component Block content'
+  description: 'Edit any Component Block custom blocks'
+
+delete own component_block content:
+  title: 'Delete own Component Block content'
+  description: 'Delete Component Block custom blocks created by the user'
+
+delete any component_block content:
+  title: 'Delete any Component Block content'
+  description: 'Delete any Component Block custom blocks'

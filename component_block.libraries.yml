@@ -1,0 +1,19 @@
+admin:
+  css:
+    theme:
+      css/component-block.css: {}
+  js:
+    js/component-block.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/drupalSettings
+    - core/drupal.ajax
+    - component_field/admin
+
+display:
+  css:
+    theme:
+      css/component-block.css: {}
+  dependencies:
+    - component_field/renderer

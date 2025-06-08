@@ -1,0 +1,34 @@
+component_block.admin.overview:
+  path: '/admin/structure/component-block'
+  defaults:
+    _controller: '\Drupal\component_block\Controller\ComponentBlockAdminController::overview'
+    _title: 'Component Blocks'
+  requirements:
+    _permission: 'administer blocks'
+
+component_block.admin.stats:
+  path: '/admin/structure/component-block/stats'
+  defaults:
+    _controller: '\Drupal\component_block\Controller\ComponentBlockAdminController::stats'
+    _title: 'Component Block Statistics'
+  requirements:
+    _permission: 'administer blocks'
+
+component_block.preview:
+  path: '/admin/structure/block/block-content/{block_content}/component-preview'
+  defaults:
+    _controller: '\Drupal\component_block\Controller\ComponentBlockAdminController::preview'
+    _title: 'Preview Component Block'
+  requirements:
+    _permission: 'access content'
+    _entity_access: 'block_content.view'
+  parameters:
+    block_content:
+      type: entity:block_content
+
+component_block.ajax.update_versions:
+  path: '/admin/component-block/update-versions'
+  defaults:
+    _controller: '\Drupal\component_block\Controller\ComponentBlockAdminController::updateVersions'
+  requirements:
+    _permission: 'administer blocks'

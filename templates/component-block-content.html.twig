@@ -1,0 +1,49 @@
+{#
+/**
+ * @file
+ * Template for Component Block content rendering.
+ *
+ * Available variables:
+ * - component_type: The selected component type
+ * - component_name: Human-readable component name
+ * - configuration: Component configuration array
+ * - attributes: HTML attributes for the container
+ * - block_content: The block content entity
+ */
+#}
+
+<div{{ attributes.addClass([
+  'component-block-wrapper',
+  'component-block-' ~ component_type|clean_class,
+  component_type ? 'component-block-configured' : 'component-block-empty'
+]) }}>
+
+  {% if component_type %}
+    {# Render the component using the component field system #}
+    {% if block_content and block_content.field_component_config %}
+      {{ block_content.field_component_config }}
+    {% else %}
+      {# Fallback rendering #}
+      <div class="component-block-fallback">
+        <div class="component-block-placeholder">
+          <h4>{{ component_name ?: component_type }}</h4>
+          {% if configuration %}
+            <div class="component-block-config-preview">
+              <details>
+                <summary>Configuration</summary>
+                <pre><code>{{ configuration|json_encode(constant('JSON_PRETTY_PRINT')) }}</code></pre>
+              </details>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  {% else %}
+    {# Empty state #}
+    <div class="component-block-empty">
+      <div class="component-block-empty-icon">🎨</div>
+      <p>{{ 'Component block not configured'|t }}</p>
+    </div>
+  {% endif %}
+
+</div>
