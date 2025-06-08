@@ -6,9 +6,11 @@ The Component Block module extends the Component Field system to create reusable
 
 ## Features
 
-- **Flexible Component Blocks**: Create custom blocks using any discovered SDC component
+- **Multi-Component Blocks**: Create custom blocks with one or more SDC components
+- **Flexible Architecture**: Add single components or build complex component collections
 - **Auto-Discovery Integration**: Leverages the Component Field discovery system
 - **Rich Configuration**: Same dynamic form generation and validation as Component Field
+- **Component Reordering**: Drag and drop to arrange components within blocks
 - **Live Preview**: See component preview while editing blocks
 - **Block Management**: Admin interface for managing and monitoring component blocks
 - **Version Tracking**: Automatically track component version changes
@@ -47,14 +49,38 @@ Component Block works as a companion to Component Field and Component Views:
 
 2. **Configure Your Block**
    - Enter a descriptive block name
-   - Select a component from the dropdown
-   - Configure component properties using the auto-generated form
+   - Add one or more components using "Add another item"
+   - Select component types from the dropdown for each
+   - Configure component properties using the auto-generated forms
+   - Reorder components by dragging if you have multiple
    - Use the live preview to see how your block will look
 
 3. **Place Your Block**
    - Go to `/admin/structure/block`
    - Click "Place block" in any region
    - Find your Component Block and configure placement
+
+### Block Strategies
+
+Component Blocks support multiple strategies depending on your needs:
+
+**Single Component Blocks**
+- Add one component per block
+- Simple, focused blocks
+- Easy to manage and reuse
+- Example: "Call to Action Button", "Hero Image"
+
+**Multi-Component Blocks**
+- Combine related components
+- Create rich content sections
+- Build complex layouts
+- Example: "Feature Section" (Title + Description + Image + Button)
+
+**Component Collections**
+- Group similar components
+- Create repeating patterns
+- Build dynamic content areas  
+- Example: "Testimonials Block" (Multiple testimonial components)
 
 ### Block Management
 
@@ -109,8 +135,9 @@ props:
 Component Block creates a custom block content type with:
 
 - **Block Info**: Standard Drupal block title/description
-- **Component Configuration**: Single Component Field instance
-- **Required Selection**: Component type must be selected
+- **Component Configuration**: Multi-value Component Field instance (unlimited)
+- **Flexible Content**: Single component or multiple component collections
+- **Component Ordering**: Drag-and-drop reordering of multiple components
 
 ### Widget Settings
 - **Show Preview**: Enable/disable live preview (default: enabled)

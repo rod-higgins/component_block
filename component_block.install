@@ -19,7 +19,7 @@ function component_block_install() {
   $block_content_type = BlockContentType::create([
     'id' => 'component_block',
     'label' => 'Component Block',
-    'description' => 'A block that renders a Single Directory Component (SDC) with configurable properties.',
+    'description' => 'A block that renders one or more Single Directory Components (SDC) with configurable properties.',
   ]);
   $block_content_type->save();
 
@@ -28,7 +28,7 @@ function component_block_install() {
     'field_name' => 'field_component_config',
     'entity_type' => 'block_content',
     'type' => 'component_field',
-    'cardinality' => 1, // Single component per block
+    'cardinality' => -1, // Unlimited components per block
     'settings' => [
       'max_length' => 0,
     ],
@@ -41,7 +41,7 @@ function component_block_install() {
     'field_storage' => $field_storage,
     'bundle' => 'component_block',
     'label' => 'Component Configuration',
-    'description' => 'Select and configure a component for this block. The component will be rendered when the block is displayed.',
+    'description' => 'Add and configure one or more components for this block. You can add multiple components and reorder them as needed.',
     'required' => TRUE,
     'settings' => [
       'handler' => 'default',
@@ -272,7 +272,7 @@ function component_block_update_8001() {
         'field_name' => 'field_component_config',
         'entity_type' => 'block_content',
         'type' => 'component_field',
-        'cardinality' => 1,
+        'cardinality' => -1,
         'settings' => ['max_length' => 0],
         'locked' => FALSE,
       ]);

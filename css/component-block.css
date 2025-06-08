@@ -273,6 +273,33 @@
   width: 100%;
 }
 
+.component-block-components {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Multiple component block styling */
+.component-block-multiple-components .component-block-components {
+  padding: 0.5rem;
+}
+
+.component-block-multiple .component-field-wrapper {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 1rem;
+  background: #fafbfc;
+  transition: background-color 0.2s ease;
+}
+
+.component-block-multiple .component-field-wrapper:hover {
+  background: #f1f3f4;
+}
+
+.component-block-single .component-block-components {
+  gap: 0;
+}
+
 .component-block[data-component-type] {
   /* Add component-specific styling based on data attribute */
 }
@@ -325,6 +352,15 @@
   .component-block-overview th,
   .component-block-overview td {
     padding: 0.5rem;
+  }
+
+  /* Stack multiple components on mobile */
+  .component-block-multiple .component-block-components {
+    gap: 0.5rem;
+  }
+
+  .component-block-multiple .component-field-wrapper {
+    padding: 0.75rem;
   }
 }
 

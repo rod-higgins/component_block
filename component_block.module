@@ -120,6 +120,7 @@ function component_block_enhance_component_field(&$field_element) {
           '<div class="component-block-list">' . 
           implode(', ', array_keys($components)) . 
           '</div>' .
+          '<p><em>' . t('You can add multiple components to each block and reorder them as needed.') . '</em></p>' .
           '</div>',
         '#weight' => -5,
       ];
@@ -321,16 +322,23 @@ function component_block_preprocess_block_content(&$variables) {
           $component_field = $block_content->get('field_component_config');
           
           if (!$component_field->isEmpty()) {
-            $component_item = $component_field->first();
-            if ($component_item && method_exists($component_item, 'get')) {
-              $variables['component_type'] = $component_item->get('component_type')->getValue();
-              $variables['component_configuration'] = $component_item->getConfiguration();
+            // Get the first component for backwards compatibility
+            $first_component = $component_field->first();
+            if ($first_component && method_exists($first_component, 'get')) {
+              $variables['component_type'] = $first_component->get('component_type')->getValue();
+              $variables['component_configuration'] = $first_component->getConfiguration();
               
-              // Add component-specific classes
+              // Add component-specific classes for the primary component
               if ($variables['component_type']) {
                 $variables['attributes']['class'][] = 'component-block-' . str_replace(['_', '-'], '-', $variables['component_type']);
                 $variables['attributes']['data-component-type'] = $variables['component_type'];
               }
+            }
+            
+            // Add class for multiple components
+            if ($component_field->count() > 1) {
+              $variables['attributes']['class'][] = 'component-block-multiple-components';
+              $variables['attributes']['data-component-count'] = $component_field->count();
             }
           }
         }
@@ -375,14 +383,14 @@ function component_block_help($route_name, $route_match) {
     case 'help.page.component_block':
       $output = '';
       $output .= '<h3>' . t('About') . '</h3>';
-      $output .= '<p>' . t('The Component Block module allows you to create custom blocks using auto-discovered Single Directory Components (SDC) from your theme. This provides a seamless way to use your theme components as reusable blocks throughout your site.') . '</p>';
+      $output .= '<p>' . t('The Component Block module allows you to create custom blocks using auto-discovered Single Directory Components (SDC) from your theme. You can add one or more components to each block, creating simple component displays or complex multi-component layouts.') . '</p>';
       
       $output .= '<h3>' . t('Creating Component Blocks') . '</h3>';
       $output .= '<dl>';
       $output .= '<dt>' . t('Add a Component Block') . '</dt>';
       $output .= '<dd>' . t('Go to Block layout > Custom block library > Add custom block > Component Block to create a new component-based block.') . '</dd>';
       $output .= '<dt>' . t('Configure Components') . '</dt>';
-      $output .= '<dd>' . t('Select from auto-discovered components in your theme and configure their properties using the dynamic form that adapts to each component.') . '</dd>';
+      $output .= '<dd>' . t('Select from auto-discovered components in your theme and configure their properties using the dynamic form that adapts to each component. You can add multiple components to a single block and reorder them as needed.') . '</dd>';
       $output .= '<dt>' . t('Place Blocks') . '</dt>';
       $output .= '<dd>' . t('Use the standard Drupal block placement interface to add your component blocks to any region on your site.') . '</dd>';
       $output .= '</dl>';
@@ -390,7 +398,9 @@ function component_block_help($route_name, $route_match) {
       $output .= '<h3>' . t('Features') . '</h3>';
       $output .= '<ul>';
       $output .= '<li>' . t('<strong>Auto-Discovery:</strong> Automatically finds SDC components in your theme') . '</li>';
+      $output .= '<li>' . t('<strong>Multi-Component Support:</strong> Add one or more components per block') . '</li>';
       $output .= '<li>' . t('<strong>Dynamic Configuration:</strong> Generates forms based on component schemas') . '</li>';
+      $output .= '<li>' . t('<strong>Component Reordering:</strong> Drag and drop to arrange multiple components') . '</li>';
       $output .= '<li>' . t('<strong>Live Preview:</strong> See component preview while editing') . '</li>';
       $output .= '<li>' . t('<strong>Rich Text Support:</strong> Full CKEditor5 integration for text properties') . '</li>';
       $output .= '<li>' . t('<strong>Entity References:</strong> Support for media, nodes, and taxonomy terms') . '</li>';

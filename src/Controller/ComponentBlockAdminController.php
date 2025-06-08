@@ -119,18 +119,24 @@ class ComponentBlockAdminController extends ControllerBase {
       ];
 
       // Get component information
-      $component_type = '';
-      $component_status = $this->t('No component');
+      $component_types = [];
+      $component_status = $this->t('No components');
       
       if ($block->hasField('field_component_config') && !$block->get('field_component_config')->isEmpty()) {
-        $component_field = $block->get('field_component_config')->first();
-        if ($component_field) {
-          $component_type = $component_field->get('component_type')->getValue();
-          
-          // Validate component
+        foreach ($block->get('field_component_config') as $component_field) {
+          if ($component_field) {
+            $component_type = $component_field->get('component_type')->getValue();
+            if ($component_type) {
+              $component_types[] = $component_type;
+            }
+          }
+        }
+        
+        if (!empty($component_types)) {
+          // Validate all components
           $validation_errors = $this->componentBlockManager->validateComponentBlock($block);
           if (empty($validation_errors)) {
-            $component_status = '✅ ' . $this->t('Valid');
+            $component_status = '✅ ' . $this->t('Valid (@count components)', ['@count' => count($component_types)]);
           } else {
             $component_status = '❌ ' . $this->t('Invalid (@count errors)', ['@count' => count($validation_errors)]);
           }
@@ -144,7 +150,7 @@ class ComponentBlockAdminController extends ControllerBase {
               '#markup' => '<strong>' . $block->label() . '</strong><br><small>ID: ' . $block->id() . '</small>',
             ],
           ],
-          $component_type ?: $this->t('None'),
+          implode(', ', $component_types) ?: $this->t('None'),
           [
             'data' => ['#markup' => $component_status],
           ],
@@ -372,32 +378,40 @@ class ComponentBlockAdminController extends ControllerBase {
 
     // Component information
     if ($block_content->hasField('field_component_config') && !$block_content->get('field_component_config')->isEmpty()) {
-      $component_field = $block_content->get('field_component_config')->first();
-      if ($component_field) {
-        $component_type = $component_field->get('component_type')->getValue();
-        $configuration = $component_field->getConfiguration();
+      $build['component_info'] = [
+        '#type' => 'details',
+        '#title' => $this->t('Component Information'),
+        '#open' => FALSE,
+      ];
+      
+      $component_count = $block_content->get('field_component_config')->count();
+      $build['component_info']['summary'] = [
+        '#type' => 'markup',
+        '#markup' => '<p><strong>' . $this->t('Components in Block:') . '</strong> ' . $component_count . '</p>',
+      ];
 
-        $build['component_info'] = [
-          '#type' => 'details',
-          '#title' => $this->t('Component Information'),
-          '#open' => FALSE,
-        ];
+      foreach ($block_content->get('field_component_config') as $delta => $component_field) {
+        if ($component_field) {
+          $component_type = $component_field->get('component_type')->getValue();
+          $configuration = $component_field->getConfiguration();
 
-        $build['component_info']['type'] = [
-          '#type' => 'markup',
-          '#markup' => '<p><strong>' . $this->t('Component Type:') . '</strong> ' . $component_type . '</p>',
-        ];
-
-        if (!empty($configuration)) {
-          $build['component_info']['config'] = [
+          $build['component_info']['component_' . $delta] = [
             '#type' => 'details',
-            '#title' => $this->t('Configuration'),
+            '#title' => $this->t('Component @num: @type', ['@num' => $delta + 1, '@type' => $component_type]),
             '#open' => FALSE,
-            'content' => [
+          ];
+
+          if (!empty($configuration)) {
+            $build['component_info']['component_' . $delta]['config'] = [
               '#type' => 'markup',
               '#markup' => '<pre>' . json_encode($configuration, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . '</pre>',
-            ],
-          ];
+            ];
+          } else {
+            $build['component_info']['component_' . $delta]['no_config'] = [
+              '#type' => 'markup',
+              '#markup' => '<p><em>' . $this->t('No configuration') . '</em></p>',
+            ];
+          }
         }
       }
     }

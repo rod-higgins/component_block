@@ -4,7 +4,7 @@
  * Template for Component Block content rendering.
  *
  * Available variables:
- * - component_type: The selected component type
+ * - component_type: The first/primary component type (for backwards compatibility)
  * - component_name: Human-readable component name
  * - configuration: Component configuration array
  * - attributes: HTML attributes for the container
@@ -14,30 +14,16 @@
 
 <div{{ attributes.addClass([
   'component-block-wrapper',
-  'component-block-' ~ component_type|clean_class,
-  component_type ? 'component-block-configured' : 'component-block-empty'
+  component_type ? 'component-block-' ~ component_type|clean_class : 'component-block-empty',
+  block_content.field_component_config|length > 1 ? 'component-block-multiple' : 'component-block-single',
+  block_content.field_component_config.isEmpty ? 'component-block-empty' : 'component-block-configured'
 ]) }}>
 
-  {% if component_type %}
-    {# Render the component using the component field system #}
-    {% if block_content and block_content.field_component_config %}
+  {% if block_content and block_content.field_component_config and not block_content.field_component_config.isEmpty %}
+    {# Render all components using the component field system #}
+    <div class="component-block-components">
       {{ block_content.field_component_config }}
-    {% else %}
-      {# Fallback rendering #}
-      <div class="component-block-fallback">
-        <div class="component-block-placeholder">
-          <h4>{{ component_name ?: component_type }}</h4>
-          {% if configuration %}
-            <div class="component-block-config-preview">
-              <details>
-                <summary>Configuration</summary>
-                <pre><code>{{ configuration|json_encode(constant('JSON_PRETTY_PRINT')) }}</code></pre>
-              </details>
-            </div>
-          {% endif %}
-        </div>
-      </div>
-    {% endif %}
+    </div>
   {% else %}
     {# Empty state #}
     <div class="component-block-empty">

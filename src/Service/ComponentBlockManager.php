@@ -83,9 +83,11 @@ class ComponentBlockManager {
       
       foreach ($blocks as $block) {
         if ($block->hasField('field_component_config') && !$block->get('field_component_config')->isEmpty()) {
-          $component_field = $block->get('field_component_config')->first();
-          if ($component_field && $component_field->get('component_type')->getValue() === $component_type) {
-            $filtered_blocks[] = $block;
+          foreach ($block->get('field_component_config') as $component_field) {
+            if ($component_field && $component_field->get('component_type')->getValue() === $component_type) {
+              $filtered_blocks[] = $block;
+              break; // Only add the block once even if it has multiple instances of the component
+            }
           }
         }
       }
@@ -119,14 +121,15 @@ class ComponentBlockManager {
       // Count blocks by component type
       foreach ($blocks as $block) {
         if ($block->hasField('field_component_config') && !$block->get('field_component_config')->isEmpty()) {
-          $component_field = $block->get('field_component_config')->first();
-          if ($component_field) {
-            $component_type = $component_field->get('component_type')->getValue();
-            if ($component_type) {
-              if (!isset($stats['blocks_by_component'][$component_type])) {
-                $stats['blocks_by_component'][$component_type] = 0;
+          foreach ($block->get('field_component_config') as $component_field) {
+            if ($component_field) {
+              $component_type = $component_field->get('component_type')->getValue();
+              if ($component_type) {
+                if (!isset($stats['blocks_by_component'][$component_type])) {
+                  $stats['blocks_by_component'][$component_type] = 0;
+                }
+                $stats['blocks_by_component'][$component_type]++;
               }
-              $stats['blocks_by_component'][$component_type]++;
             }
           }
         }
@@ -173,40 +176,42 @@ class ComponentBlockManager {
       }
       
       if ($block_content->get('field_component_config')->isEmpty()) {
-        $errors[] = 'No component configuration provided';
+        $errors[] = 'No components configured for this block';
         return $errors;
       }
       
-      $component_field = $block_content->get('field_component_config')->first();
-      if (!$component_field) {
-        $errors[] = 'Component configuration field is invalid';
-        return $errors;
-      }
-      
-      $component_type = $component_field->get('component_type')->getValue();
-      if (empty($component_type)) {
-        $errors[] = 'No component type selected';
-        return $errors;
-      }
-      
-      // Check if component still exists
-      $components = $this->componentDiscovery->discoverComponents();
-      if (!isset($components[$component_type])) {
-        $errors[] = "Component '{$component_type}' no longer exists or is not discoverable";
-        return $errors;
-      }
-      
-      // Validate configuration against component schema
-      $component_info = $components[$component_type];
-      $configuration = $component_field->getConfiguration();
-      
-      if (isset($component_info['props']) && is_array($component_info['props'])) {
-        foreach ($component_info['props'] as $prop_name => $prop_schema) {
-          // Check required properties
-          if (isset($prop_schema['required']) && $prop_schema['required'] === TRUE) {
-            if (!isset($configuration[$prop_name]) || 
-                (is_string($configuration[$prop_name]) && trim($configuration[$prop_name]) === '')) {
-              $errors[] = "Required property '{$prop_name}' is missing";
+      // Validate each component in the block
+      foreach ($block_content->get('field_component_config') as $delta => $component_field) {
+        if (!$component_field) {
+          $errors[] = "Component at position " . ($delta + 1) . " is invalid";
+          continue;
+        }
+        
+        $component_type = $component_field->get('component_type')->getValue();
+        if (empty($component_type)) {
+          $errors[] = "No component type selected at position " . ($delta + 1);
+          continue;
+        }
+        
+        // Check if component still exists
+        $components = $this->componentDiscovery->discoverComponents();
+        if (!isset($components[$component_type])) {
+          $errors[] = "Component '{$component_type}' at position " . ($delta + 1) . " no longer exists or is not discoverable";
+          continue;
+        }
+        
+        // Validate configuration against component schema
+        $component_info = $components[$component_type];
+        $configuration = $component_field->getConfiguration();
+        
+        if (isset($component_info['props']) && is_array($component_info['props'])) {
+          foreach ($component_info['props'] as $prop_name => $prop_schema) {
+            // Check required properties
+            if (isset($prop_schema['required']) && $prop_schema['required'] === TRUE) {
+              if (!isset($configuration[$prop_name]) || 
+                  (is_string($configuration[$prop_name]) && trim($configuration[$prop_name]) === '')) {
+                $errors[] = "Required property '{$prop_name}' is missing in component " . ($delta + 1) . " ({$component_type})";
+              }
             }
           }
         }
@@ -285,31 +290,34 @@ class ComponentBlockManager {
       
       foreach ($blocks as $block) {
         if ($block->hasField('field_component_config') && !$block->get('field_component_config')->isEmpty()) {
-          $component_field = $block->get('field_component_config')->first();
-          if ($component_field) {
-            $component_type = $component_field->get('component_type')->getValue();
-            $component_version = $component_field->getComponentVersion();
-            
-            if ($component_type && isset($current_components[$component_type])) {
-              $current_version = md5_file($current_components[$component_type]['yml_file'] ?? '');
+          foreach ($block->get('field_component_config') as $delta => $component_field) {
+            if ($component_field) {
+              $component_type = $component_field->get('component_type')->getValue();
+              $component_version = $component_field->getComponentVersion();
               
-              if ($component_version && $component_version !== $current_version) {
+              if ($component_type && isset($current_components[$component_type])) {
+                $current_version = md5_file($current_components[$component_type]['yml_file'] ?? '');
+                
+                if ($component_version && $component_version !== $current_version) {
+                  $outdated_blocks[] = [
+                    'block' => $block,
+                    'delta' => $delta,
+                    'component_type' => $component_type,
+                    'old_version' => $component_version,
+                    'new_version' => $current_version,
+                  ];
+                }
+              } elseif ($component_type) {
+                // Component no longer exists
                 $outdated_blocks[] = [
                   'block' => $block,
+                  'delta' => $delta,
                   'component_type' => $component_type,
                   'old_version' => $component_version,
-                  'new_version' => $current_version,
+                  'new_version' => null,
+                  'missing' => TRUE,
                 ];
               }
-            } elseif ($component_type) {
-              // Component no longer exists
-              $outdated_blocks[] = [
-                'block' => $block,
-                'component_type' => $component_type,
-                'old_version' => $component_version,
-                'new_version' => null,
-                'missing' => TRUE,
-              ];
             }
           }
         }
@@ -337,16 +345,22 @@ class ComponentBlockManager {
       
       foreach ($blocks as $block) {
         if ($block->hasField('field_component_config') && !$block->get('field_component_config')->isEmpty()) {
-          $component_field = $block->get('field_component_config')->first();
-          if ($component_field) {
-            $component_type = $component_field->get('component_type')->getValue();
-            
-            if ($component_type && isset($current_components[$component_type])) {
-              $current_version = md5_file($current_components[$component_type]['yml_file'] ?? '');
-              $component_field->setComponentVersion($current_version);
-              $block->save();
-              $updated_count++;
+          $block_updated = FALSE;
+          foreach ($block->get('field_component_config') as $component_field) {
+            if ($component_field) {
+              $component_type = $component_field->get('component_type')->getValue();
+              
+              if ($component_type && isset($current_components[$component_type])) {
+                $current_version = md5_file($current_components[$component_type]['yml_file'] ?? '');
+                $component_field->setComponentVersion($current_version);
+                $block_updated = TRUE;
+              }
             }
+          }
+          
+          if ($block_updated) {
+            $block->save();
+            $updated_count++;
           }
         }
       }
